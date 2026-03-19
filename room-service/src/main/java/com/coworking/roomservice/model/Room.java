@@ -1,22 +1,35 @@
 package com.coworking.roomservice.model;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 
 @Entity
+@Schema(description = "Représentation d'une salle de coworking")
 public class Room {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Schema(description = "Identifiant unique de la salle", example = "1")
     private Long id;
+
+    @Schema(description = "Nom de la salle", example = "Salle Innovation")
     private String name;
+
+    @Schema(description = "Ville où se situe la salle", example = "Paris")
     private String city;
+
+    @Schema(description = "Capacité maximale de la salle", example = "10")
     private Integer capacity;
 
     @Enumerated(EnumType.STRING)
+    @Schema(description = "Type de salle", example = "MEETING_ROOM")
     private RoomType type;
 
+    @Schema(description = "Tarif horaire en euros", example = "25.00")
     private BigDecimal hourlyRate;
+
+    @Schema(description = "Disponibilité de la salle", example = "true")
     private boolean available;
 
     public Long getId() { return id; }

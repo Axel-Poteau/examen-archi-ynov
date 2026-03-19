@@ -1,20 +1,31 @@
 package com.coworking.memberservice.model;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
 
 @Entity
+@Schema(description = "Représentation d'un membre de la plateforme de coworking")
 public class Member {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Schema(description = "Identifiant unique du membre", example = "1")
     private Long id;
+
+    @Schema(description = "Nom complet du membre", example = "Jean Dupont")
     private String fullName;
+
+    @Schema(description = "Adresse email du membre", example = "jean.dupont@email.com")
     private String email;
 
     @Enumerated(EnumType.STRING)
+    @Schema(description = "Type d'abonnement du membre", example = "PRO")
     private SubscriptionType subscriptionType;
 
+    @Schema(description = "Indique si le membre est suspendu (quota atteint)", example = "false")
     private boolean suspended;
+
+    @Schema(description = "Nombre maximum de réservations simultanées autorisées", example = "5")
     private Integer maxConcurrentBookings;
 
     @PrePersist
