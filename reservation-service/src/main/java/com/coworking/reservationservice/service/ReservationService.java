@@ -5,6 +5,8 @@ import com.coworking.reservationservice.dto.RoomDTO;
 import com.coworking.reservationservice.model.Reservation;
 import com.coworking.reservationservice.model.ReservationStatus;
 import com.coworking.reservationservice.repository.ReservationRepository;
+import com.coworking.reservationservice.state.ReservationState;
+import com.coworking.reservationservice.state.ReservationStateFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -87,11 +89,8 @@ public class ReservationService {
     public Reservation cancel(Long id) {
         Reservation reservation = findById(id);
 
-        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
-            throw new RuntimeException("Only confirmed reservations can be cancelled");
-        }
-
-        reservation.setStatus(ReservationStatus.CANCELLED);
+        ReservationState state = ReservationStateFactory.getState(reservation.getStatus());
+        state.cancel(reservation);
         reservationRepository.save(reservation);
 
         restTemplate.patchForObject(
@@ -106,11 +105,8 @@ public class ReservationService {
     public Reservation complete(Long id) {
         Reservation reservation = findById(id);
 
-        if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
-            throw new RuntimeException("Only confirmed reservations can be completed");
-        }
-
-        reservation.setStatus(ReservationStatus.COMPLETED);
+        ReservationState state = ReservationStateFactory.getState(reservation.getStatus());
+        state.complete(reservation);
         reservationRepository.save(reservation);
 
         restTemplate.patchForObject(
