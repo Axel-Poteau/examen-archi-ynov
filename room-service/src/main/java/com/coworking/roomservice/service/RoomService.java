@@ -2,6 +2,7 @@ package com.coworking.roomservice.service;
 
 import com.coworking.roomservice.model.Room;
 import com.coworking.roomservice.repository.RoomRepository;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -10,9 +11,11 @@ import java.util.List;
 public class RoomService {
 
     private final RoomRepository roomRepository;
+    private final KafkaTemplate<String, String> kafkaTemplate;
 
-    public RoomService(RoomRepository roomRepository) {
+    public RoomService(RoomRepository roomRepository, KafkaTemplate<String, String> kafkaTemplate) {
         this.roomRepository = roomRepository;
+        this.kafkaTemplate = kafkaTemplate;
     }
 
     public List<Room> findAll() {
@@ -49,6 +52,7 @@ public class RoomService {
 
     public void delete(Long id) {
         roomRepository.deleteById(id);
+        kafkaTemplate.send("room-deleted", id.toString());
     }
 
     public void setAvailability(Long id, boolean available) {

@@ -5,6 +5,7 @@ import com.coworking.reservationservice.dto.RoomDTO;
 import com.coworking.reservationservice.model.Reservation;
 import com.coworking.reservationservice.model.ReservationStatus;
 import com.coworking.reservationservice.repository.ReservationRepository;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -15,10 +16,13 @@ public class ReservationService {
 
     private final ReservationRepository reservationRepository;
     private final RestTemplate restTemplate;
+    private final KafkaTemplate<String, String> kafkaTemplate;
 
-    public ReservationService(ReservationRepository reservationRepository, RestTemplate restTemplate) {
+    public ReservationService(ReservationRepository reservationRepository, RestTemplate restTemplate,
+                              KafkaTemplate<String, String> kafkaTemplate) {
         this.reservationRepository = reservationRepository;
         this.restTemplate = restTemplate;
+        this.kafkaTemplate = kafkaTemplate;
     }
 
     public List<Reservation> findAll() {
@@ -71,6 +75,12 @@ public class ReservationService {
                 "http://room-service/api/rooms/" + reservation.getRoomId() + "/availability?available=false",
                 null, Void.class);
 
+        long activeCount = reservationRepository
+                .findByMemberIdAndStatus(reservation.getMemberId(), ReservationStatus.CONFIRMED).size();
+        if (activeCount >= member.getMaxConcurrentBookings()) {
+            kafkaTemplate.send("member-suspended", reservation.getMemberId().toString());
+        }
+
         return saved;
     }
 
@@ -87,6 +97,8 @@ public class ReservationService {
         restTemplate.patchForObject(
                 "http://room-service/api/rooms/" + reservation.getRoomId() + "/availability?available=true",
                 null, Void.class);
+
+        checkAndUnsuspendMember(reservation.getMemberId());
 
         return reservation;
     }
@@ -105,6 +117,34 @@ public class ReservationService {
                 "http://room-service/api/rooms/" + reservation.getRoomId() + "/availability?available=true",
                 null, Void.class);
 
+        checkAndUnsuspendMember(reservation.getMemberId());
+
         return reservation;
+    }
+
+    public void cancelByRoomId(Long roomId) {
+        List<Reservation> reservations = reservationRepository.findByRoomIdAndStatus(roomId, ReservationStatus.CONFIRMED);
+        for (Reservation reservation : reservations) {
+            reservation.setStatus(ReservationStatus.CANCELLED);
+            reservationRepository.save(reservation);
+            checkAndUnsuspendMember(reservation.getMemberId());
+        }
+    }
+
+    public void deleteByMemberId(Long memberId) {
+        List<Reservation> reservations = reservationRepository.findByMemberId(memberId);
+        reservationRepository.deleteAll(reservations);
+    }
+
+    private void checkAndUnsuspendMember(Long memberId) {
+        MemberDTO member = restTemplate.getForObject(
+                "http://member-service/api/members/" + memberId, MemberDTO.class);
+        if (member != null && member.isSuspended()) {
+            long activeCount = reservationRepository
+                    .findByMemberIdAndStatus(memberId, ReservationStatus.CONFIRMED).size();
+            if (activeCount < member.getMaxConcurrentBookings()) {
+                kafkaTemplate.send("member-unsuspended", memberId.toString());
+            }
+        }
     }
 }

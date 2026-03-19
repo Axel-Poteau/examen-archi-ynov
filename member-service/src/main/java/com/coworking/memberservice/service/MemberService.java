@@ -2,6 +2,7 @@ package com.coworking.memberservice.service;
 
 import com.coworking.memberservice.model.Member;
 import com.coworking.memberservice.repository.MemberRepository;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -10,9 +11,11 @@ import java.util.List;
 public class MemberService {
 
     private final MemberRepository memberRepository;
+    private final KafkaTemplate<String, String> kafkaTemplate;
 
-    public MemberService(MemberRepository memberRepository) {
+    public MemberService(MemberRepository memberRepository, KafkaTemplate<String, String> kafkaTemplate) {
         this.memberRepository = memberRepository;
+        this.kafkaTemplate = kafkaTemplate;
     }
 
     public List<Member> findAll() {
@@ -39,6 +42,7 @@ public class MemberService {
 
     public void delete(Long id) {
         memberRepository.deleteById(id);
+        kafkaTemplate.send("member-deleted", id.toString());
     }
 
     public void suspend(Long id) {
